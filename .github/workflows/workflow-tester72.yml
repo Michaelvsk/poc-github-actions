@@ -11,13 +11,12 @@ on:
 
 jobs:
   auto-versioning:
-    needs: set-deployment-env
     if: github.event.inputs.environment == 'qa'
     uses: ./.github/workflows/48-reusable-workflow-2.yml
 
   build-test-api:
     uses: ./.github/workflows/48-reusable-workflow-2.yml
-    needs: [set-deployment-env, auto-versioning]
+    needs: auto-versioning
     if: |
       always() &&
       (needs.auto-versioning.result == 'success' || needs.auto-versioning.result == 'skipped')
