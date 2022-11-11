@@ -10,52 +10,17 @@ on:
         default: dev
 
 jobs:
-  set-deployment-env:
-    runs-on: ubuntu-latest
-    outputs:
-      deploy_environment: ${{ steps.deplEnv.outputs.deploy_environment }}
-    steps:
-      - id: deplEnv
-        name: Set deployment environment
-        run: |
-          DEPLOY_ENVIRONMENT=$(
-          if [ ! -z '${{ github.event.inputs.environment }}' ]; then
-            echo '${{ github.event.inputs.environment }}'
-          elif [ '${{ github.ref_name }}' == 'develop' ]; then
-            echo 'dev'
-          else
-            echo "::error ::Failed to determine deployment environment. Cancelling deployment ..."
-            exit 1
-          fi
-          )
-          echo "Deploying on $DEPLOY_ENVIRONMENT"
-          echo "::set-output name=deploy_environment::$DEPLOY_ENVIRONMENT"
-
   auto-versioning:
-    needs: set-deployment-env
-    if: needs.set-deployment-env.outputs.deploy_environment == 'qa'
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
+    if: github.event.inputs.environment == 'qa'
+    uses: ./.github/workflows/48-reusable-workflow-2.yml
 
   build-test-api:
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
-    needs: [set-deployment-env, auto-versioning]
+    uses: ./.github/workflows/48-reusable-workflow-2.yml
+    needs: auto-versioning
     if: |
       always() &&
-      (needs.set-deployment-env.result == 'success') &&
       (needs.auto-versioning.result == 'success' || needs.auto-versioning.result == 'skipped')
 
-  terraform-plan:
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
-    needs: set-deployment-env
-
-  terraform-apply:
-    needs: [terraform-plan]
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
-
-  build-test-ui:
-    needs: [terraform-apply]
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
-
   deploy-api: #always skipped, if input parameter 'environment' is set to "dev"
-    needs: [build-test-api, terraform-apply]
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
+    needs: build-test-api
+    uses: ./.github/workflows/48-reusable-workflow-2.yml
