@@ -1,23 +1,43 @@
 name: Test 72 # Related to https://stackoverflow.com/questions/74386773/github-actions-job-is-skipped-although-all-needs-succeeded
 
 on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: environment
+        description: Select the environment to deploy to (select either dev, qa or prod only)
+        required: true
+        default: dev
   push:
+    branches:
+      - "develop"
 
 jobs:
-  auto-versioning:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo 'auto-versioning'
-
   set-deployment-env:
     runs-on: ubuntu-latest
+    outputs:
+      deploy_environment: ${{ steps.deplEnv.outputs.deploy_environment }}
     steps:
-      - run: echo 'set-deployment-env'
+      - id: deplEnv
+        name: Set deployment environment
+        run: |
+          DEPLOY_ENVIRONMENT=$(
+          if [ ! -z '${{ github.event.inputs.environment }}' ]; then
+            echo '${{ github.event.inputs.environment }}'
+          elif [ '${{ github.ref_name }}' == 'develop' ]; then
+            echo 'dev'
+          else
+            echo "::error ::Failed to determine deployment environment. Cancelling deployment ..."
+            exit 1
+          fi
+          )
+          echo "Deploying on $DEPLOY_ENVIRONMENT"
+          echo "::set-output name=deploy_environment::$DEPLOY_ENVIRONMENT"
 
-  terraform-apply:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo 'terraform-apply'
+  auto-versioning:
+    needs: set-deployment-env
+    if: needs.set-deployment-env.outputs.deploy_environment == 'qa'
+    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
 
   build-test-api:
     uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
@@ -27,17 +47,26 @@ jobs:
       (needs.set-deployment-env.result == 'success') &&
       (needs.auto-versioning.result == 'success' || needs.auto-versioning.result == 'skipped')
 
-  debug-deploy-api:
-    runs-on: ubuntu-latest
-    needs: [build-test-api, terraform-apply, set-deployment-env]
-    if: always() # Had to add this, otherwise it would be skipped just as "deploy-api".
-    steps:
-      - run: |
-          echo "Result of auto-versioning: ${{ needs.auto-versioning.result }}"
-          echo "Result of build-test-api: ${{ needs.build-test-api.result }}"
-          echo "Result of terraform-apply: ${{ needs.terraform-apply.result }}"
-          echo "Result of set-deployment-env: ${{ needs.set-deployment-env.result }}"
+  terraform-plan:
+    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
+    needs: set-deployment-env
+
+  terraform-apply:
+    needs: [terraform-plan, set-deployment-env]
+    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
+
+  build-test-ui:
+    needs: [terraform-apply]
+    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
 
   deploy-api: #always skipped
     needs: [build-test-api, terraform-apply, set-deployment-env]
+    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
+
+  deploy-ui:
+    needs: [build-test-ui, terraform-apply, set-deployment-env]
+    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
+
+  e2etest-ui:
+    needs: [deploy-api, deploy-ui, set-deployment-env]
     uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
