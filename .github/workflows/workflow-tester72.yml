@@ -59,7 +59,7 @@ jobs:
     needs: [terraform-apply]
     uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
 
-  deploy-api: #always skipped
+  deploy-api: #always skipped, if input parameter 'environment' is set to "dev"
     needs: [build-test-api, terraform-apply, set-deployment-env]
     uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
 
