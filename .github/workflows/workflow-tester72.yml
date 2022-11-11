@@ -34,10 +34,10 @@ jobs:
   auto-versioning:
     needs: set-deployment-env
     if: needs.set-deployment-env.outputs.deploy_environment == 'qa'
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
+    uses: ./.github/workflows/48-reusable-workflow-2.yml
 
   build-test-api:
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
+    uses: ./.github/workflows/48-reusable-workflow-2.yml
     needs: [set-deployment-env, auto-versioning]
     if: |
       always() &&
@@ -45,17 +45,17 @@ jobs:
       (needs.auto-versioning.result == 'success' || needs.auto-versioning.result == 'skipped')
 
   terraform-plan:
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
+    uses: ./.github/workflows/48-reusable-workflow-2.yml
     needs: set-deployment-env
 
   terraform-apply:
     needs: [terraform-plan]
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
+    uses: ./.github/workflows/48-reusable-workflow-2.yml
 
   build-test-ui:
     needs: [terraform-apply]
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
+    uses: ./.github/workflows/48-reusable-workflow-2.yml
 
   deploy-api: #always skipped, if input parameter 'environment' is set to "dev"
     needs: [build-test-api, terraform-apply]
-    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
+    uses: ./.github/workflows/48-reusable-workflow-2.yml
