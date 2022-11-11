@@ -8,9 +8,6 @@ on:
         description: Select the environment to deploy to (select either dev, qa or prod only)
         required: true
         default: dev
-  push:
-    branches:
-      - "develop"
 
 jobs:
   set-deployment-env:
@@ -37,10 +34,10 @@ jobs:
   auto-versioning:
     needs: set-deployment-env
     if: needs.set-deployment-env.outputs.deploy_environment == 'qa'
-    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
+    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
 
   build-test-api:
-    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
+    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
     needs: [set-deployment-env, auto-versioning]
     if: |
       always() &&
@@ -48,25 +45,17 @@ jobs:
       (needs.auto-versioning.result == 'success' || needs.auto-versioning.result == 'skipped')
 
   terraform-plan:
-    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
+    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
     needs: set-deployment-env
 
   terraform-apply:
-    needs: [terraform-plan, set-deployment-env]
-    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
+    needs: [terraform-plan]
+    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
 
   build-test-ui:
     needs: [terraform-apply]
-    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
+    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
 
   deploy-api: #always skipped, if input parameter 'environment' is set to "dev"
-    needs: [build-test-api, terraform-apply, set-deployment-env]
-    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
-
-  deploy-ui:
-    needs: [build-test-ui, terraform-apply, set-deployment-env]
-    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
-
-  e2etest-ui:
-    needs: [deploy-api, deploy-ui, set-deployment-env]
-    uses: GuillaumeFalourd/poc-github-actions/.github/workflows/48-reusable-workflow-1.yml@main
+    needs: [build-test-api, terraform-apply]
+    uses: ./.github/workflows/48-reusable-workflow-2.yml@main
