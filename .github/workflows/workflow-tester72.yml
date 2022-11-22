@@ -22,5 +22,6 @@ jobs:
       (needs.auto-versioning.result == 'success' || needs.auto-versioning.result == 'skipped')
 
   deploy-api: #always skipped, if input parameter 'environment' is set to "dev"
+    if: success('build-test-api')
     needs: build-test-api
     uses: ./.github/workflows/48-reusable-workflow-2.yml
